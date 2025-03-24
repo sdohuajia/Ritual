@@ -108,7 +108,7 @@ function install_ritual_node() {
         "rpc_url": "https://mainnet.base.org/",
         "registry_address": "0x3B1554f346DFe5c482Bb4BA31b880c1C18412170",
         "wallet": {
-          "max_gas_limit": 5000000,
+          "max_gas_limit": 4000000,
           "private_key": "$PRIVATE_KEY",
           "allowed_sim_errors": []
         },
