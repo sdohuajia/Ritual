@@ -159,6 +159,7 @@ EOL
     sleep 2
 
     # 验证 `foundryup` 是否成功安装
+    source ~/.bashrc
     foundryup
     if [ $? -ne 0 ]; then
         echo "foundryup 安装失败，无法找到该命令。请检查安装过程。"
@@ -170,6 +171,11 @@ EOL
     # 安装合约依赖
     echo "进入 contracts 目录并安装依赖..."
     cd ~/infernet-container-starter/projects/hello-world/contracts
+
+    # 删除已存在的无效目录
+    rm -rf lib/forge-std
+    rm -rf lib/infernet-sdk
+
     if ! command -v forge &> /dev/null
     then
         echo "forge 命令未找到，正在尝试安装依赖..."
