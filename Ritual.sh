@@ -21,7 +21,8 @@ function main_menu() {
         echo "请选择要执行的操作:"
         echo "1. 安装 Ritual 节点"
         echo "2. 查看 Ritual 节点日志"
-        echo "3. 退出脚本"
+        echo "3. 删除 Ritual 节点"
+        echo "4. 退出脚本"
         
         read -p "请输入您的选择: " choice
 
@@ -33,6 +34,9 @@ function main_menu() {
                 view_logs
                 ;;
             3)
+                remove_ritual_node
+                ;;
+            4)
                 echo "退出脚本！"
                 exit 0
                 ;;
@@ -146,15 +150,36 @@ EOL
     echo "安装 Foundry..."
     mkdir -p ~/foundry && cd ~/foundry
     curl -L https://foundry.paradigm.xyz | bash
+
+    # 立即加载新的环境变量
     source ~/.bashrc
+
+    # 等待环境变量生效
+    echo "等待 Foundry 环境变量生效..."
+    sleep 2
+
+    # 验证 `foundryup` 是否成功安装
     foundryup
+    if [ $? -ne 0 ]; then
+        echo "foundryup 安装失败，无法找到该命令。请检查安装过程。"
+        exit 1
+    fi
+
     echo "Foundry 安装完成！"
 
     # 安装合约依赖
     echo "进入 contracts 目录并安装依赖..."
     cd ~/infernet-container-starter/projects/hello-world/contracts
-    forge install --no-commit foundry-rs/forge-std
-    forge install --no-commit ritual-net/infernet-sdk
+    if ! command -v forge &> /dev/null
+    then
+        echo "forge 命令未找到，正在尝试安装依赖..."
+        forge install --no-commit foundry-rs/forge-std
+        forge install --no-commit ritual-net/infernet-sdk
+    else
+        echo "forge 已安装，安装依赖..."
+        forge install --no-commit foundry-rs/forge-std
+        forge install --no-commit ritual-net/infernet-sdk
+    fi
     echo "依赖安装完成！"
 
     # 启动 Docker Compose
@@ -176,6 +201,25 @@ EOL
 function view_logs() {
     echo "正在查看 Ritual 节点日志..."
     docker logs -f infernet-node
+}
+
+# 删除 Ritual 节点
+function remove_ritual_node() {
+    echo "正在删除 Ritual 节点..."
+
+    # 停止并移除 Docker 容器
+    echo "停止并移除 Docker 容器..."
+    docker-compose -f ~/infernet-container-starter/deploy/docker-compose.yaml down
+
+    # 删除仓库文件
+    echo "删除相关文件..."
+    rm -rf ~/infernet-container-starter
+
+    # 删除 Docker 镜像
+    echo "删除 Docker 镜像..."
+    docker rmi ritualnetwork/hello-world-infernet:latest
+
+    echo "Ritual 节点已成功删除！"
 }
 
 # 调用主菜单函数
