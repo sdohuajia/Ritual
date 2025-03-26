@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 检查是否以 root 用户运行脚本
 if [ "$(id -u)" != "0" ]; then
@@ -19,8 +19,8 @@ function main_menu() {
         echo "================================================================"
         echo "退出脚本，请按键盘 ctrl + C 退出即可"
         echo "请选择要执行的操作:"
-        echo "1. 安装 Ritual 节点"
-        echo "2. 查看 Ritual 节点日志"
+        echo "1) 安装 Ritual 节点"
+                echo "2. 查看 Ritual 节点日志"
         echo "3. 删除 Ritual 节点"
         echo "4. 退出脚本"
         
@@ -50,157 +50,232 @@ function main_menu() {
     done
 }
 
-# 安装 Ritual 节点
+# 安装 Ritual 节点函数
 function install_ritual_node() {
-    echo "开始安装 Ritual 节点..."
 
-    # 更新系统并安装依赖包
-    echo "更新系统..."
-    sudo apt update && sudo apt upgrade -y
+# 系统更新及必要的软件包安装 (包含 Python 和 pip)
+echo "系统更新及安装必要的包..."
+sudo apt update && sudo apt upgrade -y
+sudo apt -qy install curl git jq lz4 build-essential screen python3 python3-pip
 
-    echo "安装所需包..."
-    sudo apt -qy install curl git jq lz4 build-essential screen
+# 安装或升级 Python 包
+echo "[提示] 升级 pip3 并安装 infernet-cli / infernet-client"
+pip3 install --upgrade pip
+pip3 install infernet-cli infernet-client
 
-    # 检测 Docker 和 Docker Compose
-    echo "检查 Docker 是否安装..."
-    if ! command -v docker &> /dev/null
-    then
-        echo "Docker 没有安装，正在安装 Docker..."
-        sudo apt -qy install docker.io
-    else
-        echo "Docker 已安装"
-    fi
+ 
+# 检查 Docker 安装情况
+ 
+echo "检查 Docker 是否已安装..."
+if command -v docker &> /dev/null; then
+  echo " - Docker 已安装，跳过此 。"
+else
+  echo " - Docker 未安装，正在进行安装..."
+  sudo apt install -y docker.io
+  sudo systemctl enable docker
+  sudo systemctl start docker
+fi
 
-    echo "检查 Docker Compose 是否安装..."
-    if ! command -v docker-compose &> /dev/null
-    then
-        echo "Docker Compose 没有安装，正在安装 Docker Compose..."
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-    else
-        echo "Docker Compose 已安装"
-    fi
+ 
+# 检查 Docker Compose 安装情况
+ 
+echo "检查 Docker Compose 是否已安装..."
+if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+  echo " - Docker Compose 未安装，正在进行安装..."
+  sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" \
+       -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
 
-    # 克隆 Git 仓库并配置
-    echo "从 GitHub 拉取仓库..."
-    git clone https://github.com/ritual-net/infernet-container-starter ~/infernet-container-starter
-    cd ~/infernet-container-starter
+  DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+  mkdir -p "$DOCKER_CONFIG/cli-plugins"
+  curl -SL "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64" \
+      -o "$DOCKER_CONFIG/cli-plugins/docker-compose"
+  chmod +x "$DOCKER_CONFIG/cli-plugins/docker-compose"
+else
+  echo " - Docker Compose 已安装，跳过此 。"
+fi
 
-    # 用户输入私钥，提示信息为不可见
-    echo "请输入您的钱包私钥（私钥输入时不可见）："
-    read -s PRIVATE_KEY
+echo "[确认] Docker Compose 版本:"
+docker compose version || docker-compose version
 
-    # 配置文件内容
-    echo "配置文件正在写入..."
-    cat > deploy/config.json <<EOL
-{
-    "log_path": "infernet_node.log",
-    "server": {
-        "port": 4000,
-        "rate_limit": {
-            "num_requests": 100,
-            "period": 100
-        }
-    },
-    "chain": {
-        "enabled": true,
-        "trail_head_blocks": 3,
-        "rpc_url": "https://mainnet.base.org/",
-        "registry_address": "0x3B1554f346DFe5c482Bb4BA31b880c1C18412170",
-        "wallet": {
-          "max_gas_limit": 4000000,
-          "private_key": "$PRIVATE_KEY",
-          "allowed_sim_errors": []
-        },
-        "snapshot_sync": {
-          "sleep": 3,
-          "batch_size": 10000,
-          "starting_sub_id": 180000,
-          "sync_period": 30
-        }
-    },
-    "startup_wait": 1.0,
-    "redis": {
-        "host": "redis",
-        "port": 6379
-    },
-    "forward_stats": true,
-    "containers": [
-        {
-            "id": "hello-world",
-            "image": "ritualnetwork/hello-world-infernet:latest",
-            "external": true,
-            "port": "3000",
-            "allowed_delegate_addresses": [],
-            "allowed_addresses": [],
-            "allowed_ips": [],
-            "command": "--bind=0.0.0.0:3000 --workers=2",
-            "env": {},
-            "volumes": [],
-            "accepted_payments": {},
-            "generates_proofs": false
-        }
-    ]
+ 
+# 安装 Foundry 并设置环境变量
+ 
+echo
+echo "安装 Foundry "
+# 如果 anvil 正在运行则停止
+if pgrep anvil &>/dev/null; then
+  echo "[警告] anvil 正在运行，正在关闭以更新 Foundry。"
+  pkill anvil
+  sleep 2
+fi
+
+cd ~ || exit 1
+mkdir -p foundry
+cd foundry
+curl -L https://foundry.paradigm.xyz | bash
+
+# 安装或更新
+$HOME/.foundry/bin/foundryup
+
+# 将 ~/.foundry/bin 添加到 PATH
+if [[ ":$PATH:" != *":$HOME/.foundry/bin:"* ]]; then
+  export PATH="$HOME/.foundry/bin:$PATH"
+fi
+
+echo "[确认] forge 版本:"
+forge --version || {
+  echo "[错误] 无法找到 forge 命令，可能是 ~/.foundry/bin 未添加到 PATH 或安装失败。"
+  exit 1
 }
-EOL
 
-    echo "配置文件已成功写入！"
+# 删除 /usr/bin/forge 防止 ZOE 错误
+if [ -f /usr/bin/forge ]; then
+  echo "[提示] 删除 /usr/bin/forge..."
+  sudo rm /usr/bin/forge
+fi
 
-    # 安装 Foundry
-    echo "安装 Foundry..."
-    mkdir -p ~/foundry && cd ~/foundry
-    curl -L https://foundry.paradigm.xyz | bash
+echo "[提示] Foundry 安装及环境变量配置完成。"
+cd ~ || exit 1
 
-    # 立即加载新的环境变量
-    source ~/.bashrc
+ 
+# 克隆 infernet-container-starter
+ 
+echo
+echo "克隆 infernet-container-starter..."
+git clone https://github.com/ritual-net/infernet-container-starter
+cd infernet-container-starter || { echo "[错误] 进入目录失败"; exit 1; }
+docker pull ritualnetwork/hello-world-infernet:latest
 
-    # 等待环境变量生效
-    echo "等待 Foundry 环境变量生效..."
-    sleep 2
+ 
+# 在 screen 会话中进行初始部署(make deploy-container)
+ 
+echo "[  6] 在 screen -S ritual 会话中开始容器部署..."
+sleep 1
+screen -S ritual -dm bash -c '
+project=hello-world make deploy-container;
+exec bash
+'
 
-    # 验证 `foundryup` 是否成功安装
-    source ~/.bashrc
-    foundryup
-    if [ $? -ne 0 ]; then
-        echo "foundryup 安装失败，无法找到该命令。请检查安装过程。"
-        exit 1
-    fi
+echo "[提示] 部署工作正在后台的 screen 会话 (ritual) 中进行。"
 
-    echo "Foundry 安装完成！"
+ 
+# 用户输入 (Private Key)
+ 
+echo
+echo "配置 Ritual Node 文件..."
 
-    # 安装合约依赖
-    echo "进入 contracts 目录并安装依赖..."
-    cd ~/infernet-container-starter/projects/hello-world/contracts
+read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
 
-    # 删除已存在的无效目录
-    rm -rf lib/forge-std
-    rm -rf lib/infernet-sdk
+# 默认设置
+RPC_URL="https://base.drpc.org"
+RPC_URL_SUB="https://mainnet.base.org/"
+# 替换 registry 地址
+REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
+SLEEP=3
+START_SUB_ID=160000
+BATCH_SIZE=50  # 推荐使用公用 RPC
+TRAIL_HEAD_BLOCKS=3
+INFERNET_VERSION="1.4.0"  # infernet 镜像标签
 
-    if ! command -v forge &> /dev/null
-    then
-        echo "forge 命令未找到，正在尝试安装依赖..."
-        forge install --no-commit foundry-rs/forge-std
-        forge install --no-commit ritual-net/infernet-sdk
-    else
-        echo "forge 已安装，安装依赖..."
-        forge install --no-commit foundry-rs/forge-std
-        forge install --no-commit ritual-net/infernet-sdk
-    fi
-    echo "依赖安装完成！"
+ 
+# 修改 config.json / Deploy.s.sol / docker-compose.yaml / Makefile
+ 
 
-    # 启动 Docker Compose
-    echo "启动 Docker Compose..."
-    cd ~/infernet-container-starter
-    docker compose -f deploy/docker-compose.yaml up -d
-    echo "Docker Compose 启动完成！"
+# 修改 deploy/config.json
+sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" deploy/config.json
+sed -i "s|\"private_key\": \".*\"|\"private_key\": \"$PRIVATE_KEY\"|" deploy/config.json
+sed -i "s|\"sleep\": [0-9]*|\"sleep\": $SLEEP|" deploy/config.json
+sed -i "s|\"starting_sub_id\": [0-9]*|\"starting_sub_id\": $START_SUB_ID|" deploy/config.json
+sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" deploy/config.json
+sed -i "s|\"trail_head_blocks\": [0-9]*|\"trail_head_blocks\": $TRAIL_HEAD_BLOCKS|" deploy/config.json
+sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' deploy/config.json
+sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' projects/hello-world/container/config.json
 
-    # 部署合约
-    echo "部署合约..."
-    cd ~/infernet-container-starter
-    project=hello-world make deploy-contracts
-    echo "合约部署完成！"
 
-    echo "Ritual 节点安装完成！"
+# 修改 projects/hello-world/container/config.json
+sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" projects/hello-world/container/config.json
+sed -i "s|\"private_key\": \".*\"|\"private_key\": \"$PRIVATE_KEY\"|" projects/hello-world/container/config.json
+sed -i "s|\"sleep\": [0-9]*|\"sleep\": $SLEEP|" projects/hello-world/container/config.json
+sed -i "s|\"starting_sub_id\": [0-9]*|\"starting_sub_id\": $START_SUB_ID|" projects/hello-world/container/config.json
+sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" projects/hello-world/container/config.json
+sed -i "s|\"trail_head_blocks\": [0-9]*|\"trail_head_blocks\": $TRAIL_HEAD_BLOCKS|" projects/hello-world/container/config.json
+
+# 修改 Deploy.s.sol
+sed -i "s|\(registry\s*=\s*\).*|\1$REGISTRY;|" projects/hello-world/contracts/script/Deploy.s.sol
+sed -i "s|\(RPC_URL\s*=\s*\).*|\1\"$RPC_URL\";|" projects/hello-world/contracts/script/Deploy.s.sol
+
+# 使用 latest node 镜像
+sed -i 's|ritualnetwork/infernet-node:[^"]*|ritualnetwork/infernet-node:latest|' deploy/docker-compose.yaml
+
+# 修改 Makefile (sender, RPC_URL)
+MAKEFILE_PATH="projects/hello-world/contracts/Makefile"
+sed -i "s|^sender := .*|sender := $PRIVATE_KEY|"  "$MAKEFILE_PATH"
+sed -i "s|^RPC_URL := .*|RPC_URL := $RPC_URL|"    "$MAKEFILE_PATH"
+
+ 
+# 重启容器
+ 
+echo
+echo "docker compose down & up..."
+docker compose -f deploy/docker-compose.yaml down
+docker compose -f deploy/docker-compose.yaml up -d
+
+echo
+echo "[提示] 容器正在后台 (-d) 运行。"
+echo "使用 docker ps 查看状态。日志查看：docker logs infernet-node"
+
+ 
+# 安装 Forge 库 (解决冲突)
+ 
+echo
+echo "安装 Forge (项目依赖)"
+cd ~/infernet-container-starter/projects/hello-world/contracts || exit 1
+rm -rf lib/forge-std
+rm -rf lib/infernet-sdk
+
+forge install --no-commit foundry-rs/forge-std
+forge install --no-commit ritual-net/infernet-sdk
+
+# 重启容器
+echo
+echo "重启 docker compose..."
+cd ~/infernet-container-starter || exit 1
+docker compose -f deploy/docker-compose.yaml down
+docker compose -f deploy/docker-compose.yaml up -d
+echo "[提示] 查看 infernet-node 日志：docker logs infernet-node"
+
+ 
+# 部署项目合约 
+ 
+echo
+echo "部署项目合约..."
+DEPLOY_OUTPUT=$(project=hello-world make deploy-contracts 2>&1)
+echo "$DEPLOY_OUTPUT"
+
+# 提取新部署的合约地址（例如：Deployed SaysHello:  0x...）
+NEW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
+if [ -z "$NEW_ADDR" ]; then
+  echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.sol。"
+else
+  echo "[提示] 部署的 SaysHello 地址: $NEW_ADDR"
+  # 在 CallContract.s.sol 中替换旧地址为新地址
+  # 例如：SaysGM saysGm = SaysGM(0x13D69Cf7...) -> SaysGM saysGm = SaysGM(0xA529dB3c9...)
+  sed -i "s|SaysGM saysGm = SaysGM(0x[0-9a-fA-F]\+);|SaysGM saysGm = SaysGM($NEW_ADDR);|" \
+      projects/hello-world/contracts/script/CallContract.s.sol
+
+  # 执行 call-contract
+  echo
+  echo "使用新地址执行 call-contract..."
+  project=hello-world make call-contract
+fi
+
+echo
+echo "===== Ritual Node 完成====="
+
+  # 提示用户按任意键返回主菜单
+  read -n 1 -s -r -p "按任意键返回主菜单..."
+  main_menu
 }
 
 # 查看 Ritual 节点日志
