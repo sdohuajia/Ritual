@@ -78,27 +78,19 @@ fi
 
  
 # 检查 Docker Compose 安装情况
- 
 echo "检查 Docker Compose 是否已安装..."
 if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
   echo " - Docker Compose 未安装，正在进行安装..."
   sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" \
        -o /usr/local/bin/docker-compose
   sudo chmod +x /usr/local/bin/docker-compose
-
-  DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-  mkdir -p "$DOCKER_CONFIG/cli-plugins"
-  curl -SL "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64" \
-      -o "$DOCKER_CONFIG/cli-plugins/docker-compose"
-  chmod +x "$DOCKER_CONFIG/cli-plugins/docker-compose"
 else
-  echo " - Docker Compose 已安装，跳过此 。"
+  echo " - Docker Compose 已安装，跳过此步骤。"
 fi
 
 echo "[确认] Docker Compose 版本:"
 docker compose version || docker-compose version
 
- 
 # 安装 Foundry 并设置环境变量
  
 echo
