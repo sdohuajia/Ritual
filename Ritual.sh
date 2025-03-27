@@ -290,7 +290,8 @@ function remove_ritual_node() {
 
     # 停止并移除 Docker 容器
     echo "停止并移除 Docker 容器..."
-    docker-compose -f ~/infernet-container-starter/deploy/docker-compose.yaml down
+    cd /root/infernet-container-starter
+    docker compose down
 
     # 删除仓库文件
     echo "删除相关文件..."
