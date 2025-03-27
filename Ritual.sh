@@ -20,7 +20,7 @@ function main_menu() {
         echo "退出脚本，请按键盘 ctrl + C 退出即可"
         echo "请选择要执行的操作:"
         echo "1) 安装 Ritual 节点"
-        echo "2. 查看 Ritual 节点日志"
+                echo "2. 查看 Ritual 节点日志"
         echo "3. 删除 Ritual 节点"
         echo "4. 退出脚本"
         
@@ -150,7 +150,7 @@ docker pull ritualnetwork/hello-world-infernet:latest
  
 # 在 screen 会话中进行初始部署(make deploy-container)
  
-echo " 在 screen -S ritual 会话中开始容器部署..."
+echo "[  6] 在 screen -S ritual 会话中开始容器部署..."
 sleep 1
 screen -S ritual -dm bash -c '
 project=hello-world make deploy-container;
@@ -168,7 +168,7 @@ echo "配置 Ritual Node 文件..."
 read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
 
 # 默认设置
-RPC_URL="https://mainnet.base.org/"
+RPC_URL="https://base.drpc.org"
 RPC_URL_SUB="https://mainnet.base.org/"
 # 替换 registry 地址
 REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
@@ -217,8 +217,7 @@ sed -i "s|^RPC_URL := .*|RPC_URL := $RPC_URL|"    "$MAKEFILE_PATH"
 # 重启容器
  
 echo
-echo "Restarting container..."
-cd /root/infernet-container-starter
+echo "docker compose down & up..."
 docker compose -f deploy/docker-compose.yaml down
 docker compose -f deploy/docker-compose.yaml up -d
 
@@ -241,7 +240,7 @@ forge install --no-commit ritual-net/infernet-sdk
 # 重启容器
 echo
 echo "重启 docker compose..."
-cd /root/infernet-container-starter || exit 1
+cd ~/infernet-container-starter || exit 1
 docker compose -f deploy/docker-compose.yaml down
 docker compose -f deploy/docker-compose.yaml up -d
 echo "[提示] 查看 infernet-node 日志：docker logs infernet-node"
