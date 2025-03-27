@@ -142,16 +142,23 @@ docker pull ritualnetwork/hello-world-infernet:latest
  
 # 在 screen 会话中进行初始部署(make deploy-container)
  
-echo "[  6] 在 screen -S ritual 会话中开始容器部署..."
+echo " 检查 screen 会话 ritual 是否存在..."
+
+# 检查 'ritual' 会话是否存在
+if screen -list | grep -q "ritual"; then
+    echo "[提示] 发现 ritual 会话正在运行，正在终止..."
+    screen -S ritual -X quit
+    sleep 1
+fi
+
+echo "在 screen -S ritual 会话中开始容器部署..."
 sleep 1
-screen -S ritual -dm bash -c '
-project=hello-world make deploy-container;
-exec bash
-'
+
+# 启动新的 screen 会话进行部署
+screen -S ritual -dm bash -c 'project=hello-world make deploy-container; exec bash'
 
 echo "[提示] 部署工作正在后台的 screen 会话 (ritual) 中进行。"
 
- 
 # 用户输入 (Private Key)
  
 echo
