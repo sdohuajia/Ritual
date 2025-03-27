@@ -217,7 +217,8 @@ sed -i "s|^RPC_URL := .*|RPC_URL := $RPC_URL|"    "$MAKEFILE_PATH"
 # 重启容器
  
 echo
-echo "docker compose down & up..."
+echo "Restarting container..."
+cd ~/infernet-container-starter
 docker compose -f deploy/docker-compose.yaml down
 docker compose -f deploy/docker-compose.yaml up -d
 
