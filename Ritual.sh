@@ -150,7 +150,7 @@ docker pull ritualnetwork/hello-world-infernet:latest
  
 # 在 screen 会话中进行初始部署(make deploy-container)
  
-echo "[  6] 在 screen -S ritual 会话中开始容器部署..."
+echo " 在 screen -S ritual 会话中开始容器部署..."
 sleep 1
 screen -S ritual -dm bash -c '
 project=hello-world make deploy-container;
