@@ -20,7 +20,7 @@ function main_menu() {
         echo "退出脚本，请按键盘 ctrl + C 退出即可"
         echo "请选择要执行的操作:"
         echo "1) 安装 Ritual 节点"
-                echo "2. 查看 Ritual 节点日志"
+        echo "2. 查看 Ritual 节点日志"
         echo "3. 删除 Ritual 节点"
         echo "4. 退出脚本"
         
