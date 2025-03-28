@@ -178,7 +178,7 @@ echo "配置 Ritual Node 文件..."
 read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
 
 # 默认设置
-RPC_URL="https://base.drpc.org"
+RPC_URL="https://mainnet.base.org/"
 RPC_URL_SUB="https://mainnet.base.org/"
 # 替换 registry 地址
 REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
