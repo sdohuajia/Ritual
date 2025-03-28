@@ -133,13 +133,24 @@ cd ~ || exit 1
  
 # 克隆 infernet-container-starter
  
-echo
+# 检查目录是否存在，存在则删除
+if [ -d "infernet-container-starter" ]; then
+    echo "目录 infernet-container-starter 已存在，正在删除..."
+    rm -rf "infernet-container-starter"
+    echo "目录 infernet-container-starter 已删除。"
+fi
+
+# 克隆仓库
 echo "克隆 infernet-container-starter..."
 git clone https://github.com/ritual-net/infernet-container-starter
+
+# 进入目录
 cd infernet-container-starter || { echo "[错误] 进入目录失败"; exit 1; }
+
+# 拉取 Docker 镜像
+echo "拉取 Docker 镜像..."
 docker pull ritualnetwork/hello-world-infernet:latest
 
- 
 # 在 screen 会话中进行初始部署(make deploy-container)
  
 echo " 检查 screen 会话 ritual 是否存在..."
