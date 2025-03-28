@@ -224,8 +224,10 @@ sed -i "s|^sender := .*|sender := $PRIVATE_KEY|"  "$MAKEFILE_PATH"
 sed -i "s|^RPC_URL := .*|RPC_URL := $RPC_URL|"    "$MAKEFILE_PATH"
 
  
+# 进入项目目录
+cd ~/infernet-container-starter || exit 1
+
 # 重启容器
- 
 echo
 echo "docker compose down & up..."
 docker compose -f deploy/docker-compose.yaml down
@@ -235,12 +237,10 @@ echo
 echo "[提示] 容器正在后台 (-d) 运行。"
 echo "使用 docker ps 查看状态。日志查看：docker logs infernet-node"
 
- 
 # 安装 Forge 库 (解决冲突)
- 
 echo
 echo "安装 Forge (项目依赖)"
-cd ~/infernet-container-starter/projects/hello-world/contracts || exit 1
+cd projects/hello-world/contracts || exit 1
 rm -rf lib/forge-std
 rm -rf lib/infernet-sdk
 
@@ -255,7 +255,6 @@ docker compose -f deploy/docker-compose.yaml down
 docker compose -f deploy/docker-compose.yaml up -d
 echo "[提示] 查看 infernet-node 日志：docker logs infernet-node"
 
- 
 # 部署项目合约 
  
 echo
