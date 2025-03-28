@@ -64,19 +64,40 @@ pip3 install --upgrade pip
 pip3 install infernet-cli infernet-client
 
  
-# 检查 Docker 安装情况
- 
+# 检查 Docker 是否已安装
 echo "检查 Docker 是否已安装..."
 if command -v docker &> /dev/null; then
-  echo " - Docker 已安装，跳过此 。"
+  echo " - Docker 已安装，跳过此步骤。"
 else
   echo " - Docker 未安装，正在进行安装..."
-  sudo apt install -y docker.io
+  
+  # 更新 apt 包索引
+  sudo apt update
+  
+  # 安装必要的包，确保 apt 通过 HTTPS 使用仓库
+  sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+  
+  # 导入 Docker 官方的 GPG 密钥
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  
+  # 添加 Docker 官方仓库
+  sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  
+  # 更新 apt 包索引（加入 Docker 仓库后）
+  sudo apt update
+  
+  # 安装 Docker CE (Community Edition)
+  sudo apt install -y docker-ce docker-ce-cli containerd.io
+  
+  # 启动并启用 Docker 服务
   sudo systemctl enable docker
   sudo systemctl start docker
+  
+  # 确认 Docker 版本
+  echo "Docker 安装完成，当前版本："
+  docker --version
 fi
 
- 
 # 检查 Docker Compose 安装情况
 echo "检查 Docker Compose 是否已安装..."
 if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
