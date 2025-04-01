@@ -26,6 +26,10 @@ function main_menu() {
         echo "如有问题，可联系推特，仅此只有一个号" | tee -a "$LOG_FILE"
         echo "================================================================" | tee -a "$LOG_FILE"
         echo "退出脚本，请按键盘 ctrl + C 退出即可" | tee -a "$LOG_FILE"
+        echo "日志保存位置：" | tee -a "$LOG_FILE"
+        echo "- 脚本执行日志: $LOG_FILE" | tee -a "$LOG_FILE"
+        echo "- Docker 容器日志: $DOCKER_LOG_FILE" | tee -a "$LOG_FILE"
+        echo "- Screen 会话日志: /root/ritual_screen.log" | tee -a "$LOG_FILE"
         echo "请选择要执行的操作:" | tee -a "$LOG_FILE"
         echo "1) 安装 Ritual 节点" | tee -a "$LOG_FILE"
         echo "2. 查看 Ritual 节点日志" | tee -a "$LOG_FILE"
@@ -210,9 +214,26 @@ function install_ritual_node() {
     docker compose -f deploy/docker-compose.yaml up -d >> "$LOG_FILE" 2>&1
     echo "[提示] 容器正在后台 (-d) 运行，日志将被重定向到 $DOCKER_LOG_FILE" | tee -a "$LOG_FILE"
 
-    # 将 Docker 日志输出到文件
-    echo "配置 Docker 日志输出到 $DOCKER_LOG_FILE..." | tee -a "$LOG_FILE"
-    docker logs -f infernet-node >> "$DOCKER_LOG_FILE" 2>&1 &
+    # 将 Docker 日志输出到文件，并监控大小
+    echo "配置 Docker 日志输出到 $DOCKER_LOG_FILE，并监控大小（超过500MB自动清理）..." | tee -a "$LOG_FILE"
+    (
+        while true; do
+            docker logs -f infernet-node >> "$DOCKER_LOG_FILE" 2>&1 &
+            LOG_PID=$!
+            while kill -0 $LOG_PID 2>/dev/null; do
+                LOG_SIZE=$(stat -c%s "$DOCKER_LOG_FILE" 2>/dev/null || echo 0)
+                if [ "$LOG_SIZE" -ge $((500 * 1024 * 1024)) ]; then  # 500MB = 500 * 1024 * 1024 bytes
+                    echo "[$DOCKER_LOG_FILE] 日志大小达到 ${LOG_SIZE} 字节（超过500MB），正在清理..." | tee -a "$LOG_FILE"
+                    kill $LOG_PID 2>/dev/null
+                    echo "Docker 容器日志 - $(date)" > "$DOCKER_LOG_FILE"  # 清空并重新初始化
+                    echo "[$DOCKER_LOG_FILE] 已清理完成，新日志将继续写入。" | tee -a "$LOG_FILE"
+                    break
+                fi
+                sleep 60  # 每分钟检查一次
+            done
+            wait $LOG_PID 2>/dev/null
+        done
+    ) &
 
     # 安装 Forge 库
     echo "安装 Forge (项目依赖)" | tee -a "$LOG_FILE"
@@ -258,12 +279,14 @@ function view_logs() {
 
 # 删除 Ritual 节点
 function remove_ritual_node() {
-    echo "正在删除 Ritual 节点..." | tee -a "$LOG_FILE"
+    echo "正在删除 Ritual 节点 - $(date)" | tee -a "$LOG_FILE"
 
     # 停止并移除 Docker 容器
     echo "停止并移除 Docker 容器..." | tee -a "$LOG_FILE"
-    cd /root/infernet-container-starter
-    docker compose down >> "$LOG_FILE" 2>&1
+    cd /root/infernet-container-starter || echo "目录不存在，跳过 docker compose down" | tee -a "$LOG_FILE"
+    if [ -d "/root/infernet-container-starter" ]; then
+        docker compose down >> "$LOG_FILE" 2>&1
+    fi
 
     # 逐个停止并删除容器
     containers=(
@@ -275,10 +298,10 @@ function remove_ritual_node() {
     )
     
     for container in "${containers[@]}"; do
-        if [ $(docker ps -aq -f name=$container) ]; then
+        if [ "$(docker ps -aq -f name=$container)" ]; then
             echo "Stopping and removing $container..." | tee -a "$LOG_FILE"
-            docker stop $container >> "$LOG_FILE" 2>&1
-            docker rm $container >> "$LOG_FILE" 2>&1
+            docker stop "$container" >> "$LOG_FILE" 2>&1
+            docker rm "$container" >> "$LOG_FILE" 2>&1
         fi
     done
 
@@ -293,6 +316,10 @@ function remove_ritual_node() {
     docker rmi -f fluent/fluent-bit:3.1.4 >> "$LOG_FILE" 2>&1
     docker rmi -f redis:7.4.0 >> "$LOG_FILE" 2>&1
     docker rmi -f ritualnetwork/infernet-anvil:1.0.0 >> "$LOG_FILE" 2>&1
+
+    # 清理后台日志进程
+    echo "清理后台日志进程..." | tee -a "$LOG_FILE"
+    pkill -f "docker logs -f infernet-node" 2>/dev/null || echo "无后台日志进程需要清理" | tee -a "$LOG_FILE"
 
     echo "Ritual 节点已成功删除！" | tee -a "$LOG_FILE"
 }
