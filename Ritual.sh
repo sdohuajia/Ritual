@@ -146,6 +146,19 @@ function install_ritual_node() {
     git clone https://github.com/ritual-net/infernet-container-starter >> "$LOG_FILE" 2>&1
     cd infernet-container-starter || { echo "[错误] 进入目录失败" | tee -a "$LOG_FILE"; exit 1; }
 
+    # 修改 deploy/docker-compose.yaml 中的端口映射
+    echo "修改 docker-compose.yaml 中的端口映射..." | tee -a "$LOG_FILE"
+    DOCKER_COMPOSE_FILE="deploy/docker-compose.yaml"
+    if [ -f "$DOCKER_COMPOSE_FILE" ]; then
+        # 修改 4000 为 4005
+        sed -i 's/0.0.0.0:4000:4000/0.0.0.0:4005:4000/' "$DOCKER_COMPOSE_FILE" >> "$LOG_FILE" 2>&1
+        # 修改 8546 为 8550
+        sed -i 's/8546:3000/8550:3000/' "$DOCKER_COMPOSE_FILE" >> "$LOG_FILE" 2>&1
+        echo "[提示] 已将端口映射修改为 0.0.0.0:4005:4000 和 8550:3000" | tee -a "$LOG_FILE"
+    else
+        echo "[错误] 未找到 $DOCKER_COMPOSE_FILE 文件，端口修改失败" | tee -a "$LOG_FILE"
+    fi
+
     # 拉取 Docker 镜像
     echo "拉取 Docker 镜像..." | tee -a "$LOG_FILE"
     docker pull ritualnetwork/hello-world-infernet:latest >> "$LOG_FILE" 2>&1
