@@ -109,32 +109,85 @@ function install_ritual_node() {
         echo "已为私钥添加 0x 前缀" | tee -a "$LOG_FILE"
     fi
 
-    echo "正在安装依赖项..." | tee -a "$LOG_FILE"
+    echo "正在检查和安装依赖项..." | tee -a "$LOG_FILE"
 
-    # 更新软件包和构建工具
-    sudo apt update && sudo apt upgrade -y >> "$LOG_FILE" 2>&1
-    sudo apt -qy install curl git jq lz4 build-essential screen >> "$LOG_FILE" 2>&1
+    # 检查并更新软件包和构建工具
+    if ! dpkg -l | grep -q build-essential; then
+        echo "正在更新软件包并安装构建工具..." | tee -a "$LOG_FILE"
+        sudo apt update && sudo apt upgrade -y >> "$LOG_FILE" 2>&1
+        sudo apt -qy install curl git jq lz4 build-essential screen >> "$LOG_FILE" 2>&1
+    else
+        echo "构建工具已安装，跳过安装步骤。" | tee -a "$LOG_FILE"
+    fi
 
-    # 安装 Docker
-    echo "正在安装 Docker..." | tee -a "$LOG_FILE"
-    sudo apt-get update >> "$LOG_FILE" 2>&1
-    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release >> "$LOG_FILE" 2>&1
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg >> "$LOG_FILE" 2>&1
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update >> "$LOG_FILE" 2>&1
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io >> "$LOG_FILE" 2>&1
-    sudo usermod -aG docker $USER >> "$LOG_FILE" 2>&1
-    docker run hello-world >> "$LOG_FILE" 2>&1
+    # 检查并安装 Docker
+    if ! command -v docker &> /dev/null; then
+        echo "正在安装 Docker..." | tee -a "$LOG_FILE"
+        sudo apt-get update >> "$LOG_FILE" 2>&1
+        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release >> "$LOG_FILE" 2>&1
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg >> "$LOG_FILE" 2>&1
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update >> "$LOG_FILE" 2>&1
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io >> "$LOG_FILE" 2>&1
+        sudo usermod -aG docker $USER >> "$LOG_FILE" 2>&1
+        docker run hello-world >> "$LOG_FILE" 2>&1
+    else
+        echo "Docker 已安装，跳过安装步骤。" | tee -a "$LOG_FILE"
+    fi
 
-    # 安装 Docker Compose
-    echo "正在安装 Docker Compose..." | tee -a "$LOG_FILE"
-    sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
-    sudo chmod +x /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
-    docker compose version >> "$LOG_FILE" 2>&1
+    # 检查并安装 Docker Compose
+    if ! command -v docker-compose &> /dev/null; then
+        echo "正在安装 Docker Compose..." | tee -a "$LOG_FILE"
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
+        sudo chmod +x /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
+        docker compose version >> "$LOG_FILE" 2>&1
+    else
+        echo "Docker Compose 已安装，跳过安装步骤。" | tee -a "$LOG_FILE"
+    fi
 
-    # 克隆仓库
-    echo "正在克隆仓库..." | tee -a "$LOG_FILE"
+    # 检查并安装 Foundry
+    if ! command -v forge &> /dev/null; then
+        echo "正在安装 Foundry..." | tee -a "$LOG_FILE"
+        cd ~ || exit 1
+        mkdir -p foundry && cd foundry
+        pkill anvil 2>/dev/null || true
+        sleep 2
+        curl -L https://foundry.paradigm.xyz | bash >> "$LOG_FILE" 2>&1
+        export PATH="$HOME/.foundry/bin:$PATH"
+        $HOME/.foundry/bin/foundryup || foundryup >> "$LOG_FILE" 2>&1
+        if ! command -v forge &> /dev/null; then
+            echo 'export PATH="$PATH:$HOME/.foundry/bin"' >> ~/.bashrc
+            source ~/.bashrc
+        fi
+        if [ -f /usr/bin/forge ]; then
+            sudo rm /usr/bin/forge >> "$LOG_FILE" 2>&1
+        fi
+    else
+        echo "Foundry 已安装，跳过安装步骤。" | tee -a "$LOG_FILE"
+    fi
+    
+    # 检查并克隆仓库
+    echo "正在检查并克隆仓库..." | tee -a "$LOG_FILE"
+    if [ -d "~/infernet-container-starter" ]; then
+    echo "检测到已存在的 infernet-container-starter 目录，正在删除..." | tee -a "$LOG_FILE"
+    rm -rf ~/infernet-container-starter >> "$LOG_FILE" 2>&1
+    if [ $? -eq 0 ]; then
+        echo "旧仓库目录已成功删除。" | tee -a "$LOG_FILE"
+    else
+        echo "删除旧仓库目录失败，请检查权限或手动删除 ~/infernet-container-starter。" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+fi
+
+    echo "正在克隆最新仓库..." | tee -a "$LOG_FILE"
     git clone https://github.com/ritual-net/infernet-container-starter >> "$LOG_FILE" 2>&1
+    if [ $? -eq 0 ]; then
+    echo "仓库克隆成功。" | tee -a "$LOG_FILE"
+    else
+    echo "仓库克隆失败，请检查网络连接或 GitHub 可用性。" | tee -a "$LOG_FILE"
+    exit 1
+    fi
+    
     cd ~/infernet-container-starter || exit 1
 
     # 创建配置文件
