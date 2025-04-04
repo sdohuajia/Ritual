@@ -347,14 +347,25 @@ function view_logs() {
 function remove_ritual_node() {
     echo "正在删除 Ritual 节点 - $(date)" | tee -a "$LOG_FILE"
 
+    # 停止并禁用 systemd 服务
+    echo "停止并禁用 systemd 服务..." | tee -a "$LOG_FILE"
+    if systemctl is-active --quiet ritual-network.service; then
+        sudo systemctl stop ritual-network.service >> "$LOG_FILE" 2>&1
+        sudo systemctl disable ritual-network.service >> "$LOG_FILE" 2>&1
+    fi
+    sudo rm -f /etc/systemd/system/ritual-network.service >> "$LOG_FILE" 2>&1
+    sudo systemctl daemon-reload >> "$LOG_FILE" 2>&1
+    echo "已移除 ritual-network.service" | tee -a "$LOG_FILE"
+
     # 停止并移除 Docker 容器
     echo "停止并移除 Docker 容器..." | tee -a "$LOG_FILE"
-    cd /root/infernet-container-starter || echo "目录不存在，跳过 docker compose down" | tee -a "$LOG_FILE"
-    if [ -d "/root/infernet-container-starter" ]; then
-        docker compose down >> "$LOG_FILE" 2>&1
+    cd ~/infernet-container-starter 2>/dev/null || echo "目录 ~/infernet-container-starter 不存在，跳过 docker compose down" | tee -a "$LOG_FILE"
+    if [ -d "~/infernet-container-starter" ]; then
+        docker compose -f deploy/docker-compose.yaml down >> "$LOG_FILE" 2>&1
     fi
 
-    # 逐个停止并删除容器
+    # 如果容器仍存在，手动移除
+    echo "移除存在的容器..." | tee -a "$LOG_FILE"
     containers=(
         "infernet-node"
         "infernet-fluentbit"
@@ -362,32 +373,48 @@ function remove_ritual_node() {
         "infernet-anvil"
         "hello-world"
     )
-    
     for container in "${containers[@]}"; do
         if [ "$(docker ps -aq -f name=$container)" ]; then
-            echo "Stopping and removing $container..." | tee -a "$LOG_FILE"
+            echo "正在停止并移除容器 $container..." | tee -a "$LOG_FILE"
             docker stop "$container" >> "$LOG_FILE" 2>&1
-            docker rm "$container" >> "$LOG_FILE" 2>&1
+            docker rm -f "$container" >> "$LOG_FILE" 2>&1
         fi
     done
 
     # 删除相关文件
-    echo "删除相关文件..." | tee -a "$LOG_FILE"
+    echo "移除安装文件..." | tee -a "$LOG_FILE"
     rm -rf ~/infernet-container-starter >> "$LOG_FILE" 2>&1
+    rm -rf ~/foundry >> "$LOG_FILE" 2>&1
+    rm -f ~/ritual-service.sh ~/ritual-deployment.log ~/ritual-service.log >> "$LOG_FILE" 2>&1
 
     # 删除 Docker 镜像
     echo "删除 Docker 镜像..." | tee -a "$LOG_FILE"
-    docker rmi -f ritualnetwork/hello-world-infernet:latest >> "$LOG_FILE" 2>&1
-    docker rmi -f ritualnetwork/infernet-node:latest >> "$LOG_FILE" 2>&1
-    docker rmi -f fluent/fluent-bit:3.1.4 >> "$LOG_FILE" 2>&1
-    docker rmi -f redis:7.4.0 >> "$LOG_FILE" 2>&1
-    docker rmi -f ritualnetwork/infernet-anvil:1.0.0 >> "$LOG_FILE" 2>&1
+    images=(
+        "ritualnetwork/hello-world-infernet:latest"
+        "ritualnetwork/infernet-node:latest"
+        "fluent/fluent-bit:3.1.4"
+        "redis:7.4.0"
+        "ritualnetwork/infernet-anvil:1.0.0"
+    )
+    for image in "${images[@]}"; do
+        if docker image inspect "$image" >/dev/null 2>&1; then
+            echo "正在删除镜像 $image..." | tee -a "$LOG_FILE"
+            docker rmi -f "$image" >> "$LOG_FILE" 2>&1
+        fi
+    done
+
+    # 清理 Docker 资源
+    echo "清理 Docker 资源..." | tee -a "$LOG_FILE"
+    docker system prune -f >> "$LOG_FILE" 2>&1
 
     # 清理后台日志进程
     echo "清理后台日志进程..." | tee -a "$LOG_FILE"
     pkill -f "docker logs -f infernet-node" 2>/dev/null || echo "无后台日志进程需要清理" | tee -a "$LOG_FILE"
 
     echo "Ritual 节点已成功删除！" | tee -a "$LOG_FILE"
+    
+    read -n 1 -s -r -p "按任意键返回主菜单..."
+    main_menu
 }
 
 # 调用主菜单函数
