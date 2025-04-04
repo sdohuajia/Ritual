@@ -18,8 +18,43 @@ DOCKER_LOG_FILE="/root/infernet_node.log"
 echo "Ritual 脚本日志 - $(date)" > "$LOG_FILE"
 echo "Docker 容器日志 - $(date)" > "$DOCKER_LOG_FILE"
 
+# 日志后台监控函数
+function start_log_monitor() {
+    # 防止重复启动监控进程
+    if pgrep -f "monitor_logs" > /dev/null; then
+        echo "日志监控已在运行，跳过启动。" | tee -a "$LOG_FILE"
+        return
+    fi
+
+    # 定义后台监控脚本
+    cat > /tmp/monitor_logs.sh << 'EOL'
+#!/bin/bash
+LOG_FILE="/root/ritual_install.log"
+DOCKER_LOG_FILE="/root/infernet_node.log"
+MAX_SIZE=$((500 * 1024 * 1024)) # 500MB in bytes
+
+while true; do
+    for log_file in "$LOG_FILE" "$DOCKER_LOG_FILE"; do
+        log_size=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
+        if [ "$log_size" -ge "$MAX_SIZE" ]; then
+            echo "[$log_file] 日志大小达到 ${log_size} 字节（超过500MB），正在清理..." >> "$LOG_FILE"
+            echo "$(basename "$log_file") - $(date)" > "$log_file"
+            echo "[$log_file] 已清理完成，新日志将继续写入。" >> "$LOG_FILE"
+        fi
+    done
+    sleep 60 # 每分钟检查一次
+done
+EOL
+
+    chmod +x /tmp/monitor_logs.sh
+    nohup /tmp/monitor_logs.sh > /dev/null 2>&1 &
+    echo "已启动日志后台监控进程，检查间隔为60秒。" | tee -a "$LOG_FILE"
+}
+
 # 主菜单函数
 function main_menu() {
+    start_log_monitor # 在主菜单启动时确保监控进程运行
+    
     while true; do
         clear
         echo "脚本由大赌社区哈哈哈哈编写，推特 @ferdie_jhovie，免费开源，请勿相信收费" | tee -a "$LOG_FILE"
@@ -47,6 +82,7 @@ function main_menu() {
                 ;;
             4)
                 echo "退出脚本！" | tee -a "$LOG_FILE"
+                pkill -f "monitor_logs.sh" 2>/dev/null || echo "无日志监控进程需要清理" | tee -a "$LOG_FILE"
                 exit 0
                 ;;
             *)
@@ -62,47 +98,47 @@ function main_menu() {
 # 安装 Ritual 节点函数
 function install_ritual_node() {
     # 请求输入私钥，隐藏输入内容
-    echo "请输入您的私钥（如果需要，请带上 0x 前缀）"
-    echo "注意：为安全起见，输入内容将隐藏"
+    echo "请输入您的私钥（如果需要，请带上 0x 前缀）" | tee -a "$LOG_FILE"
+    echo "注意：为安全起见，输入内容将隐藏" | tee -a "$LOG_FILE"
     read -s private_key
-    echo "已接收私钥（为安全起见已隐藏）"
+    echo "已接收私钥（为安全起见已隐藏）" | tee -a "$LOG_FILE"
 
     # 如果缺少 0x 前缀，自动添加
     if [[ ! $private_key =~ ^0x ]]; then
         private_key="0x$private_key"
-        echo "已为私钥添加 0x 前缀"
+        echo "已为私钥添加 0x 前缀" | tee -a "$LOG_FILE"
     fi
 
-    echo "正在安装依赖项..."
+    echo "正在安装依赖项..." | tee -a "$LOG_FILE"
 
     # 更新软件包和构建工具
-    sudo apt update && sudo apt upgrade -y
-    sudo apt -qy install curl git jq lz4 build-essential screen
+    sudo apt update && sudo apt upgrade -y >> "$LOG_FILE" 2>&1
+    sudo apt -qy install curl git jq lz4 build-essential screen >> "$LOG_FILE" 2>&1
 
     # 安装 Docker
-    echo "正在安装 Docker..."
-    sudo apt-get update
-    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "正在安装 Docker..." | tee -a "$LOG_FILE"
+    sudo apt-get update >> "$LOG_FILE" 2>&1
+    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release >> "$LOG_FILE" 2>&1
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg >> "$LOG_FILE" 2>&1
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-    sudo usermod -aG docker $USER
-    docker run hello-world
+    sudo apt-get update >> "$LOG_FILE" 2>&1
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io >> "$LOG_FILE" 2>&1
+    sudo usermod -aG docker $USER >> "$LOG_FILE" 2>&1
+    docker run hello-world >> "$LOG_FILE" 2>&1
 
     # 安装 Docker Compose
-    echo "正在安装 Docker Compose..."
-    sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
-    docker compose version
+    echo "正在安装 Docker Compose..." | tee -a "$LOG_FILE"
+    sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
+    sudo chmod +x /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
+    docker compose version >> "$LOG_FILE" 2>&1
 
     # 克隆仓库
-    echo "正在克隆仓库..."
-    git clone https://github.com/ritual-net/infernet-container-starter
+    echo "正在克隆仓库..." | tee -a "$LOG_FILE"
+    git clone https://github.com/ritual-net/infernet-container-starter >> "$LOG_FILE" 2>&1
     cd ~/infernet-container-starter || exit 1
 
     # 创建配置文件
-    echo "正在创建配置文件..."
+    echo "正在创建配置文件..." | tee -a "$LOG_FILE"
     cat > deploy/config.json << EOL
 {
     "log_path": "infernet_node.log",
@@ -199,7 +235,7 @@ EOL
     sed -i 's/infernet-node:.*/infernet-node:1.4.0/g' deploy/docker-compose.yaml
 
     # 使用 systemd 部署容器
-    echo "正在为 Ritual Network 创建 systemd 服务..."
+    echo "正在为 Ritual Network 创建 systemd 服务..." | tee -a "$LOG_FILE"
     cat > ~/ritual-service.sh << EOL
 #!/bin/bash
 cd ~/infernet-container-starter
@@ -242,67 +278,68 @@ WantedBy=multi-user.target
 EOL
 
     # 启动 systemd 服务
-    sudo systemctl daemon-reload
-    sudo systemctl enable ritual-network.service
-    sudo systemctl start ritual-network.service
+    sudo systemctl daemon-reload >> "$LOG_FILE" 2>&1
+    sudo systemctl enable ritual-network.service >> "$LOG_FILE" 2>&1
+    sudo systemctl start ritual-network.service >> "$LOG_FILE" 2>&1
 
     # 验证服务状态
     sleep 5
     if sudo systemctl is-active --quiet ritual-network.service; then
-        echo "✔ Ritual Network 服务启动成功！"
+        echo "✔ Ritual Network 服务启动成功！" | tee -a "$LOG_FILE"
     else
-        echo "⚠ 警告：服务可能未正确启动。正在检查状态..."
-        sudo systemctl status ritual-network.service
+        echo "⚠ 警告：服务可能未正确启动。正在检查状态..." | tee -a "$LOG_FILE"
+        sudo systemctl status ritual-network.service | tee -a "$LOG_FILE"
     fi
-    echo "服务日志正在保存到 ~/ritual-deployment.log"
+    echo "服务日志正在保存到 ~/ritual-deployment.log" | tee -a "$LOG_FILE"
 
     # 安装 Foundry
-    echo "正在安装 Foundry..."
+    echo "正在安装 Foundry..." | tee -a "$LOG_FILE"
     cd ~ || exit 1
     mkdir -p foundry && cd foundry
     pkill anvil 2>/dev/null || true
     sleep 2
-    curl -L https://foundry.paradigm.xyz | bash
+    curl -L https://foundry.paradigm.xyz | bash >> "$LOG_FILE" 2>&1
     export PATH="$HOME/.foundry/bin:$PATH"
-    $HOME/.foundry/bin/foundryup || foundryup
+    $HOME/.foundry/bin/foundryup || foundryup >> "$LOG_FILE" 2>&1
     if ! command -v forge &> /dev/null; then
         echo 'export PATH="$PATH:$HOME/.foundry/bin"' >> ~/.bashrc
         source ~/.bashrc
     fi
     if [ -f /usr/bin/forge ]; then
-        sudo rm /usr/bin/forge
+        sudo rm /usr/bin/forge >> "$LOG_FILE" 2>&1
     fi
 
     # 安装 Forge 依赖
-    echo "正在安装 Forge 依赖..."
+    echo "正在安装 Forge 依赖..." | tee -a "$LOG_FILE"
     cd ~/infernet-container-starter/projects/hello-world/contracts || exit 1
     rm -rf lib/forge-std lib/infernet-sdk 2>/dev/null || true
-    forge install --no-commit foundry-rs/forge-std
-    forge install --no-commit ritual-net/infernet-sdk
+    forge install --no-commit foundry-rs/forge-std >> "$LOG_FILE" 2>&1
+    forge install --no-commit ritual-net/infernet-sdk >> "$LOG_FILE" 2>&1
 
-    # 重启容器
-    echo "正在重启容器..."
+    # 重启容器并将日志输出到 DOCKER_LOG_FILE
+    echo "正在重启容器并记录日志到 $DOCKER_LOG_FILE..." | tee -a "$LOG_FILE"
     cd ~/infernet-container-starter || exit 1
-    docker compose -f deploy/docker-compose.yaml down
-    docker compose -f deploy/docker-compose.yaml up -d
+    docker compose -f deploy/docker-compose.yaml down >> "$LOG_FILE" 2>&1
+    docker compose -f deploy/docker-compose.yaml up -d >> "$LOG_FILE" 2>&1
+    docker logs -f infernet-node >> "$DOCKER_LOG_FILE" 2>&1 &
 
     # 部署合约并捕获地址
-    echo "正在部署消费者合约..."
+    echo "正在部署消费者合约..." | tee -a "$LOG_FILE"
     export PRIVATE_KEY="${private_key#0x}"
     deployment_output=$(project=hello-world make deploy-contracts 2>&1)
     echo "$deployment_output" > ~/deployment-output.log
     contract_address=$(echo "$deployment_output" | grep -oE "已部署 SaysHello: 0x[a-fA-F0-9]{40}" | awk '{print $4}')
 
     if [ -z "$contract_address" ]; then
-        echo "⚠ 无法自动提取合约地址。请检查 ~/deployment-output.log 并手动输入："
+        echo "⚠ 无法自动提取合约地址。请检查 ~/deployment-output.log 并手动输入：" | tee -a "$LOG_FILE"
         read -p "请输入合约地址（格式为 0x...）： " contract_address
     else
-        echo "✔ 成功提取合约地址：$contract_address"
+        echo "✔ 成功提取合约地址：$contract_address" | tee -a "$LOG_FILE"
     fi
     echo "$contract_address" > ~/contract-address.txt
 
     # 更新 CallContract.s.sol
-    echo "使用合约地址更新 CallContract.s.sol：$contract_address"
+    echo "使用合约地址更新 CallContract.s.sol：$contract_address" | tee -a "$LOG_FILE"
     cat > projects/hello-world/contracts/script/CallContract.s.sol << EOL
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.13;
@@ -323,16 +360,16 @@ contract CallContract is Script {
 EOL
 
     # 调用合约
-    echo "调用合约以测试功能..."
-    project=hello-world make call-contract
+    echo "调用合约以测试功能..." | tee -a "$LOG_FILE"
+    project=hello-world make call-contract >> "$LOG_FILE" 2>&1
 
     # 检查容器和日志
-    echo "检查容器是否正在运行..."
-    docker ps | grep infernet
-    echo "检查节点日志..."
-    docker logs infernet-node 2>&1 | tail -n 20
+    echo "检查容器是否正在运行..." | tee -a "$LOG_FILE"
+    docker ps | grep infernet | tee -a "$LOG_FILE"
+    echo "检查节点日志..." | tee -a "$LOG_FILE"
+    docker logs infernet-node 2>&1 | tail -n 20 | tee -a "$LOG_FILE"
 
-    echo "===== Ritual Node 安装完成 ====="
+    echo "===== Ritual Node 安装完成 =====" | tee -a "$LOG_FILE"
     read -n 1 -s -r -p "按任意键返回主菜单..."
     main_menu
 }
