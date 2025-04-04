@@ -167,6 +167,12 @@ function install_ritual_node() {
     read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
     echo "用户输入 Private Key: [隐藏]" >> "$LOG_FILE"
 
+    # 修改 docker-compose.yaml 文件
+    echo "修改 docker-compose.yaml 文件端口映射..."
+    sed -i 's/ports:/ports:/' ~/infernet-container-starter/deploy/docker-compose.yaml
+    sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
+    sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
+
     # 默认设置
     RPC_URL="https://mainnet.base.org/"
     RPC_URL_SUB="https://mainnet.base.org/"
