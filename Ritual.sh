@@ -121,19 +121,46 @@ function install_ritual_node() {
     fi
 
     # 检查并安装 Docker
-    if ! command -v docker &> /dev/null; then
-        echo "正在安装 Docker..." | tee -a "$LOG_FILE"
-        sudo apt-get update >> "$LOG_FILE" 2>&1
-        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release >> "$LOG_FILE" 2>&1
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg >> "$LOG_FILE" 2>&1
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-        sudo apt-get update >> "$LOG_FILE" 2>&1
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io >> "$LOG_FILE" 2>&1
-        sudo usermod -aG docker $USER >> "$LOG_FILE" 2>&1
-        docker run hello-world >> "$LOG_FILE" 2>&1
-    else
-        echo "Docker 已安装，跳过安装步骤。" | tee -a "$LOG_FILE"
+echo "正在检查 Docker 安装状态..." | tee -a "$LOG_FILE"
+if ! command -v docker &> /dev/null || ! docker version &> /dev/null; then
+    echo "Docker 未安装或无法正常运行，正在安装..." | tee -a "$LOG_FILE"
+    
+    # 更新包索引并安装依赖
+    sudo apt-get update >> "$LOG_FILE" 2>&1
+    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release >> "$LOG_FILE" 2>&1
+    
+    # 添加 Docker 官方 GPG 密钥
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg >> "$LOG_FILE" 2>&1
+    if [ $? -ne 0 ]; then
+        echo "添加 Docker GPG 密钥失败，请检查网络连接。" | tee -a "$LOG_FILE"
+        exit 1
     fi
+    
+    # 设置 Docker 仓库
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # 安装 Docker
+    sudo apt-get update >> "$LOG_FILE" 2>&1
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io >> "$LOG_FILE" 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Docker 安装失败，请检查日志 $LOG_FILE 并确保系统兼容。" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+    
+    # 将当前用户添加到 docker 组
+    sudo usermod -aG docker $USER >> "$LOG_FILE" 2>&1
+    
+    # 验证 Docker 是否正常运行
+    if ! docker run hello-world >> "$LOG_FILE" 2>&1; then
+        echo "Docker 安装后测试失败，请检查 Docker 服务状态。" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+    echo "Docker 安装成功并通过测试。" | tee -a "$LOG_FILE"
+else
+    echo "Docker 已安装且正常运行，跳过安装步骤。" | tee -a "$LOG_FILE"
+    docker_version=$(docker --version | awk '{print $3}' | tr -d ',')
+    echo "当前 Docker 版本: $docker_version" | tee -a "$LOG_FILE"
+fi
 
     # 检查并安装 Docker Compose
     if ! command -v docker-compose &> /dev/null; then
