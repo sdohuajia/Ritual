@@ -178,7 +178,7 @@ function install_ritual_node() {
     RPC_URL_SUB="https://mainnet.base.org/"
     REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
     SLEEP=3
-    START_SUB_ID=160000
+    START_SUB_ID=240000
     BATCH_SIZE=50
     TRAIL_HEAD_BLOCKS=3
     INFERNET_VERSION="1.4.0"
