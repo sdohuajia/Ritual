@@ -187,7 +187,7 @@ function install_ritual_node() {
     sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" deploy/config.json >> "$LOG_FILE" 2>&1
     sed -i "s|\"private_key\": \".*\"|\"private_key\": \"$PRIVATE_KEY\"|" deploy/config.json >> "$LOG_FILE" 2>&1
     sed -i "s|\"sleep\": [0-9]*|\"sleep\": $SLEEP|" deploy/config.json >> "$LOG_FILE" 2>&1
-    sed -i "s|\"starting_sub_id\": [0-9]*|\"starting_sub_id\": 240000|" deploy/config.json >> "$LOG_FILE" 2>&1  # 修改为 240000
+    sed -i "s|\"starting_sub_id\": [0-9]*|\"starting_sub_id\": $START_SUB_ID|" deploy/config.json >> "$LOG_FILE" 2>&1
     sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" deploy/config.json >> "$LOG_FILE" 2>&1
     sed -i "s|\"trail_head_blocks\": [0-9]*|\"trail_head_blocks\": $TRAIL_HEAD_BLOCKS|" deploy/config.json >> "$LOG_FILE" 2>&1
     sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' deploy/config.json >> "$LOG_FILE" 2>&1
