@@ -55,7 +55,7 @@ function install_ritual_node() {
     echo "开始安装 Ritual 节点 - $(date)"
     
     # 系统更新及必要的软件包安装 (包含 Python 和 pip)
-    echo "系统更新及安装必要的包..."
+    echo "系统 tussle更新及安装必要的包..."
     sudo apt update && sudo apt upgrade -y
     sudo apt -qy install curl git jq lz4 build-essential screen python3 python3-pip
 
@@ -162,7 +162,7 @@ function install_ritual_node() {
     echo "修改 docker-compose.yaml 文件端口映射..."
     sed -i 's/ports:/ports:/' ~/infernet-container-starter/deploy/docker-compose.yaml
     sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
-    sed{margin-bottom: 0px !important;} -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
+    sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
 
     # 禁用 Fluent Bit 服务
     echo "禁用 Fluent Bit 服务以减少日志写入..."
@@ -171,6 +171,16 @@ function install_ritual_node() {
         echo "[提示] Fluent Bit 服务已从 docker-compose.yaml 中移除。"
     else
         echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 Fluent Bit 步骤。"
+    fi
+
+    # 禁止 infernet-anvil 日志写入
+    echo "配置 infernet-anvil 禁止日志写入..."
+    if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
+        # 在 infernet-anvil 服务下添加 logging 配置
+        sed -i '/infernet-anvil:/a\    logging:\n      driver: "none"' ~/infernet-container-starter/deploy/docker-compose.yaml
+        echo "[提示] infernet-anvil 的日志写入已禁用。"
+    else
+        echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 infernet-anvil 日志步骤。"
     fi
 
     # 默认设置
@@ -236,7 +246,7 @@ function install_ritual_node() {
     DEPLOY_OUTPUT=$(project=hello-world make deploy-contracts 2>&1)
     echo "$DEPLOY_OUTPUT"
 
-    NEW_ADDR=$(echo "$DEPLOYOutput" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
+    NEW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
     if [ -z "$NEW_ADDR" ]; then
         echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.sol。"
     else
