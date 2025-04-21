@@ -20,9 +20,9 @@ function main_menu() {
         echo "退出脚本，请按键盘 ctrl + C 退出即可"
         echo "请选择要执行的操作:"
         echo "1) 安装 Ritual 节点"
-        echo "2. 查看 Ritual 节点日志"
-        echo "3. 删除 Ritual 节点"
-        echo "4. 退出脚本"
+        echo "2) 查看 Ritual 节点日志"
+        echo "3) 删除 Ritual 节点"
+        echo "4) 退出脚本"
         
         read -p "请输入您的选择: " choice
 
@@ -162,7 +162,16 @@ function install_ritual_node() {
     echo "修改 docker-compose.yaml 文件端口映射..."
     sed -i 's/ports:/ports:/' ~/infernet-container-starter/deploy/docker-compose.yaml
     sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
-    sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
+    sed{margin-bottom: 0px !important;} -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
+
+    # 禁用 Fluent Bit 服务
+    echo "禁用 Fluent Bit 服务以减少日志写入..."
+    if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
+        sed -i '/infernet-fluentbit:/,/^[^ ]/d' ~/infernet-container-starter/deploy/docker-compose.yaml
+        echo "[提示] Fluent Bit 服务已从 docker-compose.yaml 中移除。"
+    else
+        echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 Fluent Bit 步骤。"
+    fi
 
     # 默认设置
     RPC_URL="https://mainnet.base.org/"
@@ -227,7 +236,7 @@ function install_ritual_node() {
     DEPLOY_OUTPUT=$(project=hello-world make deploy-contracts 2>&1)
     echo "$DEPLOY_OUTPUT"
 
-    NEW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
+    NEW_ADDR=$(echo "$DEPLOYOutput" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
     if [ -z "$NEW_ADDR" ]; then
         echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.sol。"
     else
