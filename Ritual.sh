@@ -164,15 +164,6 @@ function install_ritual_node() {
     sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
     sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
 
-    # 禁用 Fluent Bit 服务
-    echo "禁用 Fluent Bit 服务以减少日志写入..."
-    if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
-        sed -i '/infernet-fluentbit:/,/^[^ ]/d' ~/infernet-container-starter/deploy/docker-compose.yaml
-        echo "[提示] Fluent Bit 服务已从 docker-compose.yaml 中移除。"
-    else
-        echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 Fluent Bit 步骤。"
-    fi
-
     # 禁止 infernet-anvil 日志写入
     echo "配置 infernet-anvil 禁止日志写入..."
     if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
