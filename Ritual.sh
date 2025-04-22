@@ -177,7 +177,7 @@ function install_ritual_node() {
     echo "配置 infernet-anvil 禁止日志写入..."
     if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
         # 在 infernet-anvil 服务下添加 logging 配置
-        sed -i '/infernet-anvil:/a\    logging:\n      driver: "none"' ~/infernet-container-starter/deploy/docker-compose.yaml
+        sed -i '/^  infernet-anvil:/a\    logging:\n      driver: "none"' ~/infernet-container-starter/deploy/docker-compose.yaml
         echo "[提示] infernet-anvil 的日志写入已禁用。"
     else
         echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 infernet-anvil 日志步骤。"
