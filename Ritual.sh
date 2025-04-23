@@ -23,7 +23,7 @@ function main_menu() {
         echo "2) 查看 Ritual 节点日志"
         echo "3) 删除 Ritual 节点"
         echo "4) 退出脚本"
-        
+
         read -p "请输入您的选择: " choice
 
         case $choice in
@@ -53,9 +53,9 @@ function main_menu() {
 # 安装 Ritual 节点函数
 function install_ritual_node() {
     echo "开始安装 Ritual 节点 - $(date)"
-    
+
     # 系统更新及必要的软件包安装 (包含 Python 和 pip)
-    echo "系统 tussle更新及安装必要的包..."
+    echo "系统更新及安装必要的包..."
     sudo apt update && sudo apt upgrade -y
     sudo apt -qy install curl git jq lz4 build-essential screen python3 python3-pip
 
@@ -111,6 +111,7 @@ function install_ritual_node() {
     $HOME/.foundry/bin/foundryup
     if [[ ":$PATH:" != *":$HOME/.foundry/bin:"* ]]; then
         export PATH="$HOME/.foundry/bin:$PATH"
+        echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
     fi
 
     echo "[确认] forge 版本:"
@@ -164,25 +165,13 @@ function install_ritual_node() {
     sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
     sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
 
-    # 禁止 infernet-anvil 日志写入
-    echo "配置 infernet-anvil 禁止日志写入..."
-    if [ -f ~/infernet-container-starter/deploy/docker-compose.yaml ]; then
-        # 在 infernet-anvil 服务下添加 logging 配置
-        sed -i '/^  infernet-anvil:/a\    logging:\n      driver: "none"' ~/infernet-container-starter/deploy/docker-compose.yaml
-        echo "[提示] infernet-anvil 的日志写入已禁用。"
-    else
-        echo "[警告] 未找到 docker-compose.yaml 文件，跳过禁用 infernet-anvil 日志步骤。"
-    fi
-
     # 默认设置
     RPC_URL="https://mainnet.base.org/"
-    RPC_URL_SUB="https://mainnet.base.org/"
     REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
     SLEEP=3
     START_SUB_ID=240000
     BATCH_SIZE=50
     TRAIL_HEAD_BLOCKS=3
-    INFERNET_VERSION="1.4.0"
 
     # 修改配置文件
     sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" deploy/config.json
@@ -191,8 +180,8 @@ function install_ritual_node() {
     sed -i "s|\"starting_sub_id\": [0-9]*|\"starting_sub_id\": $START_SUB_ID|" deploy/config.json
     sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" deploy/config.json
     sed -i "s|\"trail_head_blocks\": [0-9]*|\"trail_head_blocks\": $TRAIL_HEAD_BLOCKS|" deploy/config.json
-    sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org/"|' deploy/config.json
-    sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org/"|' projects/hello-world/container/config.json
+    sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' deploy/config.json
+    sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' projects/hello-world/container/config.json
 
     sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" projects/hello-world/container/config.json
     sed -i "s|\"private_key\": \".*\"|\"private_key\": \"$PRIVATE_KEY\"|" projects/hello-world/container/config.json
@@ -257,6 +246,9 @@ function install_ritual_node() {
 function view_logs() {
     echo "正在查看 Ritual 节点日志（实时输出）..."
     docker logs -f infernet-node
+    echo "按任意键返回主菜单..."
+    read -n 1 -s -r
+    main_menu
 }
 
 # 删除 Ritual 节点
@@ -265,11 +257,15 @@ function remove_ritual_node() {
 
     # 停止并移除 Docker 容器
     echo "停止并移除 Docker 容器..."
-    cd ~/infernet-container-starter || {
+    if [ -d "~/infernet-container-starter" ]; then
+        cd ~/infernet-container-starter || {
+            echo "目录 ~/infernet-container-starter 不存在，跳过停止容器步骤。"
+            return
+        }
+        docker compose down
+    else
         echo "目录 ~/infernet-container-starter 不存在，跳过停止容器步骤。"
-        return
-    }
-    docker compose down
+    fi
 
     # 逐个停止并删除容器
     containers=(
@@ -279,12 +275,12 @@ function remove_ritual_node() {
         "infernet-anvil"
         "hello-world"
     )
-    
+
     for container in "${containers[@]}"; do
-        if [ $(docker ps -aq -f name=$container) ]; then
+        if [ "$(docker ps -aq -f name=$container)" ]; then
             echo "Stopping and removing $container..."
-            docker stop $container
-            docker rm $container
+            docker stop "$container"
+            docker rm "$container"
         fi
     done
 
@@ -301,7 +297,9 @@ function remove_ritual_node() {
     docker rmi -f ritualnetwork/infernet-anvil:1.0.0
 
     echo "Ritual 节点已成功删除！"
+    read -n 1 -s -r -p "按任意键返回主菜单..."
+    main_menu
 }
 
-# 调用主菜单函数
+# 启动主菜单
 main_menu
