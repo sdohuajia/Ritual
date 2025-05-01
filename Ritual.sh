@@ -54,7 +54,7 @@ function main_menu() {
 # 安装 Ritual 节点函数
 function install_ritual_node() {
 
-# 系统更新及必要的软件包安装 (包含 Python 和 pip)
+# 系统更新及必要的软件包安装 (包含 Python线索
 echo "系统更新及安装必要的包..."
 sudo apt update && sudo apt upgrade -y
 sudo apt -qy install curl git jq lz4 build-essential screen python3 python3-pip
@@ -97,7 +97,6 @@ echo "[确认] Docker Compose 版本:"
 docker compose version || docker-compose version
 
 # 安装 Foundry 并设置环境变量
- 
 echo
 echo "安装 Foundry "
 # 如果 anvil 正在运行则停止
@@ -117,18 +116,20 @@ $HOME/.foundry/bin/foundryup
 
 # 将 ~/.foundry/bin 添加到 PATH
 if [[ ":$PATH:" != *":$HOME/.foundry/bin:"* ]]; then
+  echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
   export PATH="$HOME/.foundry/bin:$PATH"
 fi
 
+# 修改：验证 Foundry 安装
 echo "[确认] forge 版本:"
-forge --version || {
-  echo "[错误] 无法找到 forge 命令，可能是 ~/.foundry/bin 未添加到 PATH 或安装失败。"
+if ! $HOME/.foundry/bin/forge --version; then
+  echo "[错误] 无法找到 forge 命令，Foundry 安装失败。"
   exit 1
-}
+fi
 
-# 删除 /usr/bin/forge 防止 ZOE 错误
+# 修改：删除可能冲突的 /usr/bin/forge（ZOE 相关）
 if [ -f /usr/bin/forge ]; then
-  echo "[提示] 删除 /usr/bin/forge..."
+  echo "[提示] 删除 /usr/bin/forge 以避免 ZOE 冲突..."
   sudo rm /usr/bin/forge
 fi
 
@@ -137,7 +138,6 @@ cd ~ || exit 1
 
  
 # 克隆 infernet-container-starter
- 
 echo
 echo "克隆 infernet-container-starter..."
 git clone https://github.com/ritual-net/infernet-container-starter
@@ -146,7 +146,6 @@ docker pull ritualnetwork/hello-world-infernet:latest
 
  
 # 在 screen 会话中进行初始部署(make deploy-container)
- 
 echo " 检查 screen 会话 ritual 是否存在..."
 
 # 检查 'ritual' 会话是否存在
@@ -165,17 +164,10 @@ screen -S ritual -dm bash -c 'project=hello-world make deploy-container; exec ba
 echo "[提示] 部署工作正在后台的 screen 会话 (ritual) 中进行。"
 
 # 用户输入 (Private Key)
- 
 echo
 echo "配置 Ritual Node 文件..."
 
 read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
-
-# 修改 docker-compose.yaml 文件
-echo "修改 docker-compose.yaml 文件端口映射..."
-sed -i 's/ports:/ports:/' ~/infernet-container-starter/deploy/docker-compose.yaml
-sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
-sed -i 's/- "8545:3000"/- "8550:3000"/' ~/infernet-container-starter/deploy/docker-compose.yaml
 
 # 默认设置
 RPC_URL="https://mainnet.base.org/"
@@ -183,15 +175,13 @@ RPC_URL_SUB="https://mainnet.base.org/"
 # 替换 registry 地址
 REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
 SLEEP=3
-START_SUB_ID=240000
+START_SUB_ID=160000
 BATCH_SIZE=50  # 推荐使用公用 RPC
 TRAIL_HEAD_BLOCKS=3
 INFERNET_VERSION="1.4.0"  # infernet 镜像标签
 
  
 # 修改 config.json / Deploy.s.sol / docker-compose.yaml / Makefile
- 
-
 # 修改 deploy/config.json
 sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" deploy/config.json
 sed -i "s|\"private_key\": \".*\"|\"private_key\": \"$PRIVATE_KEY\"|" deploy/config.json
@@ -201,7 +191,6 @@ sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" deploy/config.jso
 sed -i "s|\"trail_head_blocks\": [0-9]*|\"trail_head_blocks\": $TRAIL_HEAD_BLOCKS|" deploy/config.json
 sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' deploy/config.json
 sed -i 's|"rpc_url": ".*"|"rpc_url": "https://mainnet.base.org"|' projects/hello-world/container/config.json
-
 
 # 修改 projects/hello-world/container/config.json
 sed -i "s|\"registry_address\": \".*\"|\"registry_address\": \"$REGISTRY\"|" projects/hello-world/container/config.json
@@ -234,10 +223,9 @@ sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/in
 sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/projects/hello-world/container/config.json
 sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/deploy/config.json
 sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/projects/hello-world/container/config.json
+
 # 修改 projects/hello-world/container/config.json
-
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/projects/hello-world/container/config.json
-
 
 # 修改 Deploy.s.sol
 sed -i "s|\(RPC_URL\s*=\s*\).*|\1\"$RPC_URL\";|" /root/infernet-container-starter/projects/hello-world/contracts/script/Deploy.s.sol
@@ -248,7 +236,6 @@ MAKEFILE_PATH="/root/infernet-container-starter/projects/hello-world/contracts/M
 sed -i "s|^RPC_URL := .*|RPC_URL := $RPC_URL|"    "$MAKEFILE_PATH"
  
 # 重启容器
- 
 echo
 echo "docker compose down & up..."
 docker compose -f deploy/docker-compose.yaml down
@@ -260,15 +247,15 @@ echo "使用 docker ps 查看状态。日志查看：docker logs infernet-node"
 
  
 # 安装 Forge 库 (解决冲突)
- 
 echo
 echo "安装 Forge (项目依赖)"
 cd ~/infernet-container-starter/projects/hello-world/contracts || exit 1
 rm -rf lib/forge-std
 rm -rf lib/infernet-sdk
 
-forge install --no-commit foundry-rs/forge-std
-forge install --no-commit ritual-net/infernet-sdk
+# 修改：使用 --no-git 替代 --no-commit
+forge install --no-git foundry-rs/forge-std
+forge install --no-git ritual-net/infernet-sdk
 
 # 重启容器
 echo
@@ -279,8 +266,7 @@ docker compose -f deploy/docker-compose.yaml up -d
 echo "[提示] 查看 infernet-node 日志：docker logs infernet-node"
 
  
-# 部署项目合约 
- 
+# 部署项目合约
 echo
 echo "部署项目合约..."
 DEPLOY_OUTPUT=$(project=hello-world make deploy-contracts 2>&1)
@@ -293,7 +279,6 @@ if [ -z "$NEW_ADDR" ]; then
 else
   echo "[提示] 部署的 SaysHello 地址: $NEW_ADDR"
   # 在 CallContract.s.sol 中替换旧地址为新地址
-  # 例如：SaysGM saysGm = SaysGM(0x13D69Cf7...) -> SaysGM saysGm = SaysGM(0xA529dB3c9...)
   sed -i "s|SaysGM saysGm = SaysGM(0x[0-9a-fA-F]\+);|SaysGM saysGm = SaysGM($NEW_ADDR);|" \
       projects/hello-world/contracts/script/CallContract.s.sol
 
@@ -311,7 +296,7 @@ else
 
   if screen -list | grep -q "diyujiedian"; then
       echo "[提示] 发现 diyujiedian 会话正在运行，正在终止..."
-          screen -S diyujiedian -X quit
+      screen -S diyujiedian -X quit
       sleep 1
   fi
   # 运行脚本
