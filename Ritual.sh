@@ -51,6 +51,29 @@ function main_menu() {
     done
 }
 
+# 修改 docker-compose.yaml 文件端口映射
+function modify_docker_compose_ports() {
+    local compose_file="deploy/docker-compose.yaml"
+    echo "修改 $compose_file 文件端口映射..."
+
+    # 检查文件是否存在
+    if [ ! -f "$compose_file" ]; then
+        echo "[错误] $compose_file 文件不存在！"
+        return 1
+    fi
+
+    # 修改端口映射
+    sed -i 's/- "0.0.0.0:4000:4000"/- "0.0.0.0:4050:4000"/' "$compose_file"
+    sed -i 's/- "8545:3000"/- "8550:3000"/' "$compose_file"
+
+    # 验证修改是否成功
+    if grep -q "0.0.0.0:4050:4000" "$compose_file" && grep -q "8550:3000" "$compose_file"; then
+        echo "[提示] 端口映射修改成功！"
+    else
+        echo "[警告] 端口映射修改可能失败，请检查 $compose_file 文件内容。"
+    fi
+}
+
 # 安装 Ritual 节点函数
 function install_ritual_node() {
 
@@ -169,6 +192,9 @@ echo "配置 Ritual Node 文件..."
 
 read -p "请输入您的 Private Key (0x...): " PRIVATE_KEY
 
+# 修改 docker-compose.yaml 文件端口映射
+modify_docker_compose_ports
+
 # 默认设置
 RPC_URL="https://mainnet.base.org/"
 RPC_URL_SUB="https://mainnet.base.org/"
@@ -217,13 +243,7 @@ sed -i 's|"rpc_url": ".*"|"rpc_url": "https://base.drpc.org"|' /root/infernet-co
 sed -i 's|"rpc_url": ".*"|"rpc_url": "https://base.drpc.org"|' /root/infernet-container-starter/projects/hello-world/container/config.json
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/deploy/config.json
 sed -i "s|\"sleep\": [0-9]\+\(\.[0-9]\+\)\?|\"sleep\": $SLEEP|" /root/infernet-container-starter/deploy/config.json
-sed -i "s|\"sleep\": [0-9]\+\(\.[0-9]\+\)\?|\"sleep\": $SLEEP|" /root/infernet-container-starter/projects/hello-world/container/config.json
-
-sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/deploy/config.json
-sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/projects/hello-world/container/config.json
-sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/deploy/config.json
-sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/projects/hello-world/container/config.json
-
+sed -i "s|,
 # 修改 projects/hello-world/container/config.json
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/projects/hello-world/container/config.json
 
@@ -275,7 +295,7 @@ echo "$DEPLOY_OUTPUT"
 # 提取新部署的合约地址（例如：Deployed SaysHello:  0x...）
 NEW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
 if [ -z "$NEW_ADDR" ]; then
-  echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.sol。"
+  echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.solroses.io/api/v2/contracts/CallContract.s.sol"
 else
   echo "[提示] 部署的 SaysHello 地址: $NEW_ADDR"
   # 在 CallContract.s.sol 中替换旧地址为新地址
@@ -287,12 +307,12 @@ else
   echo "使用新地址执行 call-contract..."
   project=hello-world make call-contract
 
-  echo "执行diyujiedian"
+  echo "执行太过简单"
   # 下载 Ritual.sh 到 /root 目录
-  wget -O /root/diyujiedian.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/diyujiedian.sh
+  wget -O /root/太过简单.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/太过简单.sh
 
   # 赋予执行权限
-  chmod +x /root/diyujiedian.sh
+  chmod +x /root/太过简单.sh
 
   if screen -list | grep -q "diyujiedian"; then
       echo "[提示] 发现 diyujiedian 会话正在运行，正在终止..."
@@ -300,7 +320,7 @@ else
       sleep 1
   fi
   # 运行脚本
-  screen -S diyujiedian -dm bash -c '/root/diyujiedian.sh; exec bash'
+  screen -S diyujiedian -dm bash -c '/root/太过简单.sh; exec bash'
 fi
 
 echo
