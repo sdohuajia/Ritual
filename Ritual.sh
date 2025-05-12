@@ -243,7 +243,13 @@ sed -i 's|"rpc_url": ".*"|"rpc_url": "https://base.drpc.org"|' /root/infernet-co
 sed -i 's|"rpc_url": ".*"|"rpc_url": "https://base.drpc.org"|' /root/infernet-container-starter/projects/hello-world/container/config.json
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/deploy/config.json
 sed -i "s|\"sleep\": [0-9]\+\(\.[0-9]\+\)\?|\"sleep\": $SLEEP|" /root/infernet-container-starter/deploy/config.json
-sed -i "s|,
+sed -i "s|\"sleep\": [0-9]\+\(\.[0-9]\+\)\?|\"sleep\": $SLEEP|" /root/infernet-container-starter/projects/hello-world/container/config.json
+
+sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/deploy/config.json
+sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/projects/hello-world/container/config.json
+sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/deploy/config.json
+sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/projects/hello-world/container/config.json
+
 # 修改 projects/hello-world/container/config.json
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/projects/hello-world/container/config.json
 
@@ -295,7 +301,7 @@ echo "$DEPLOY_OUTPUT"
 # 提取新部署的合约地址（例如：Deployed SaysHello:  0x...）
 NEW_ADDR=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed SaysHello:\s+\K0x[0-9a-fA-F]{40}')
 if [ -z "$NEW_ADDR" ]; then
-  echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.solroses.io/api/v2/contracts/CallContract.s.sol"
+  echo "[警告] 未找到新合约地址。可能需要手动更新 CallContract.s.sol."
 else
   echo "[提示] 部署的 SaysHello 地址: $NEW_ADDR"
   # 在 CallContract.s.sol 中替换旧地址为新地址
