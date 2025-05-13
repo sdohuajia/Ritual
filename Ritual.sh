@@ -316,9 +316,11 @@ else
   echo "拉取diyujiedian"
   # 下载 diyujiedian.sh 到 /root 目录
   wget -O /root/diyujiedian.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/diyujiedian.sh
-
+  wget -O /root/anvil.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/anvil.sh
+  
   # 赋予执行权限
   chmod +x /root/diyujiedian.sh
+  chmod +x /root/anvil.sh
 
   if screen -list | grep -q "diyujiedian"; then
       echo "[提示] 发现 diyujiedian 会话正在运行，正在终止..."
@@ -326,7 +328,7 @@ else
       sleep 1
   fi
   # 运行脚本
-  screen -S diyujiedian -dm bash -c '/root/太过简单.sh; exec bash'
+  screen -S diyujiedian -dm bash -c '/root/diyujiedian.sh; exec bash'
 fi
 
 echo
