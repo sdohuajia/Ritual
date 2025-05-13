@@ -313,12 +313,12 @@ else
   echo "使用新地址执行 call-contract..."
   project=hello-world make call-contract
 
-  echo "执行太过简单"
-  # 下载 Ritual.sh 到 /root 目录
-  wget -O /root/太过简单.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/太过简单.sh
+  echo "拉取diyujiedian"
+  # 下载 diyujiedian.sh 到 /root 目录
+  wget -O /root/diyujiedian.sh https://raw.githubusercontent.com/sdohuajia/Ritual/refs/heads/main/diyujiedian.sh
 
   # 赋予执行权限
-  chmod +x /root/太过简单.sh
+  chmod +x /root/diyujiedian.sh
 
   if screen -list | grep -q "diyujiedian"; then
       echo "[提示] 发现 diyujiedian 会话正在运行，正在终止..."
