@@ -201,7 +201,7 @@ RPC_URL_SUB="https://mainnet.base.org/"
 # 替换 registry 地址
 REGISTRY="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
 SLEEP=3
-START_SUB_ID=160000
+START_SUB_ID=300000
 BATCH_SIZE=50  # 推荐使用公用 RPC
 TRAIL_HEAD_BLOCKS=3
 INFERNET_VERSION="1.4.0"  # infernet 镜像标签
@@ -247,8 +247,8 @@ sed -i "s|\"sleep\": [0-9]\+\(\.[0-9]\+\)\?|\"sleep\": $SLEEP|" /root/infernet-c
 
 sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/deploy/config.json
 sed -i "s|\"sync_period\": [0-9]\+\(\.[0-9]\+\)\?|\"sync_period\": 30|" /root/infernet-container-starter/projects/hello-world/container/config.json
-sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/deploy/config.json
-sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": 244000|" /root/infernet-container-starter/projects/hello-world/container/config.json
+sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": $START_SUB_ID|" /root/infernet-container-starter/deploy/config.json
+sed -i "s|\"starting_sub_id\": [0-9]\+\(\.[0-9]\+\)\?|\"starting_sub_id\": $START_SUB_ID|" /root/infernet-container-starter/projects/hello-world/container/config.json
 
 # 修改 projects/hello-world/container/config.json
 sed -i "s|\"batch_size\": [0-9]*|\"batch_size\": $BATCH_SIZE|" /root/infernet-container-starter/projects/hello-world/container/config.json
